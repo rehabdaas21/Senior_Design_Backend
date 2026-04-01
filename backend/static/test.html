@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HAIR System — Pipeline Tester</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+    header {
+      background: #1a1a2e;
+      color: white;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 600; }
+    header span { font-size: 0.85rem; color: #aaa; margin-left: auto; }
+
+    .container { max-width: 900px; margin: 32px auto; padding: 0 20px 60px; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 18px; color: #1a1a2e; }
+
+    label { display: block; font-size: 0.82rem; font-weight: 600; color: #555; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    .upload-area {
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      background: #fafafa;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .upload-area:hover { border-color: #1a1a2e; background: #f4f4f8; }
+    .upload-area.has-file { border-color: #22c55e; background: #f0fdf4; }
+    .upload-area input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+    .upload-text { font-size: 0.95rem; color: #666; }
+    .upload-text strong { color: #1a1a2e; }
+    .file-name { margin-top: 8px; font-size: 0.85rem; color: #22c55e; font-weight: 600; }
+
+    .row { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+    .field { flex: 1; min-width: 140px; }
+    .field input[type=number] {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid #e0e0e0; border-radius: 8px;
+      font-size: 0.95rem; font-family: inherit;
+    }
+    .field input[type=number]:focus { outline: none; border-color: #1a1a2e; }
+
+    .btn {
+      margin-top: 20px; width: 100%;
+      padding: 14px;
+      background: #1a1a2e; color: white;
+      border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .btn:hover { background: #2e2e50; }
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* Pipeline flow */
+    .pipeline-flow {
+      display: flex; align-items: center; justify-content: center;
+      gap: 6px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .step {
+      background: #f0f2f5; border-radius: 20px;
+      padding: 6px 14px; font-size: 0.78rem; font-weight: 600;
+      color: #888; border: 2px solid #e0e0e0;
+      transition: all 0.3s;
+    }
+    .step.done { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+    .step.active { background: #fffbeb; color: #b45309; border-color: #f59e0b; }
+    .arrow { color: #ccc; font-size: 1rem; }
+
+    /* Transcript */
+    .transcript-box {
+      background: #f8fafc; border-radius: 10px;
+      padding: 16px 18px; border: 1.5px solid #e0e0e0; margin-bottom: 20px;
+    }
+    .transcript-box .t-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #999; margin-bottom: 6px; letter-spacing: 0.05em; }
+    .transcript-box .t-text { font-size: 1rem; color: #333; line-height: 1.55; }
+
+    /* Module outputs grid */
+    .section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #999; margin-bottom: 10px; margin-top: 20px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 4px; }
+
+    .metric {
+      border-radius: 10px; padding: 18px;
+      border-left: 4px solid #ccc;
+    }
+    .metric .m-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #888; margin-bottom: 6px; }
+    .metric .m-value { font-size: 1.3rem; font-weight: 800; }
+    .metric .m-sub { font-size: 0.8rem; color: #999; margin-top: 4px; }
+
+    .metric.positive   { background: #f0fdf4; border-color: #22c55e; }
+    .metric.frustrated { background: #fff7ed; border-color: #f97316; }
+    .metric.mild       { background: #f0fdf4; border-color: #22c55e; }
+    .metric.moderate   { background: #fffbeb; border-color: #f59e0b; }
+    .metric.severe     { background: #fef2f2; border-color: #ef4444; }
+    .metric.neutral    { background: #f8fafc; border-color: #94a3b8; }
+
+    /* ATE */
+    .ate-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 4px; }
+    .ate-item { background: #f8fafc; border-radius: 10px; padding: 14px 16px; }
+    .ate-item .a-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 4px; }
+    .ate-item .a-value { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+
+    /* Task */
+    .task-box {
+      background: #1a1a2e; color: white;
+      border-radius: 10px; padding: 22px; margin-bottom: 14px;
+    }
+    .task-box .t-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #aaa; margin-bottom: 10px; letter-spacing: 0.05em; }
+    .task-box .t-prompt { font-size: 1.15rem; font-weight: 500; line-height: 1.55; }
+    .task-box .t-diff { margin-top: 12px; font-size: 0.8rem; color: #aaa; }
+
+    /* Cue */
+    .cue-box { border: 2px solid #e0e0e0; border-radius: 10px; padding: 18px 20px; }
+    .cue-box .c-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: #888; margin-bottom: 8px; letter-spacing: 0.05em; }
+    .cue-box .c-text { font-size: 1rem; line-height: 1.55; color: #333; }
+
+    /* Streak */
+    .streak-note {
+      margin-top: 16px; padding: 12px 16px;
+      background: #f8fafc; border-radius: 8px;
+      font-size: 0.85rem; color: #666;
+      border: 1.5px solid #e0e0e0;
+    }
+    .streak-note strong { color: #1a1a2e; }
+
+    .error-box {
+      background: #fef2f2; border: 1.5px solid #ef4444;
+      color: #b91c1c; border-radius: 10px;
+      padding: 16px 18px; font-size: 0.9rem;
+    }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .grid-2, .ate-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>HAIR System — Pipeline Tester</h1>
+  <span>Full End-to-End Test</span>
+</header>
+
+<div class="container">
+
+  <!-- Input Card -->
+  <div class="card">
+    <h2>Input</h2>
+
+    <label>Audio File (.wav)</label>
+    <div class="upload-area" id="upload-area">
+      <input type="file" id="audio-input" accept=".wav,.mp3,.m4a" onchange="onFileSelected(this)" />
+      <div class="upload-icon">🎙️</div>
+      <div class="upload-text">Drop a <strong>.wav</strong> file here or click to browse</div>
+      <div class="file-name" id="file-name" style="display:none"></div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Previous Difficulty (1–5)</label>
+        <input type="number" id="prev-diff" value="3" min="1" max="5" />
+      </div>
+      <div class="field">
+        <label>Frustration Streak</label>
+        <input type="number" id="frust" value="0" min="0" />
+      </div>
+    </div>
+
+    <button class="btn" id="run-btn" onclick="runPipeline()">▶ Run Full Pipeline</button>
+  </div>
+
+  <!-- Pipeline Steps -->
+  <div class="pipeline-flow" id="pipeline-flow" style="display:none">
+    <div class="step" id="step-upload">Upload</div>
+    <div class="arrow">→</div>
+    <div class="step" id="step-whisper">Whisper</div>
+    <div class="arrow">→</div>
+    <div class="step" id="step-sentiment">Sentiment</div>
+    <div class="arrow">→</div>
+    <div class="step" id="step-severity">Severity</div>
+    <div class="arrow">→</div>
+    <div class="step" id="step-ate">ATE</div>
+    <div class="arrow">→</div>
+    <div class="step" id="step-task">Task + Cue</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="error-box" style="display:none"></div>
+
+  <!-- Results -->
+  <div id="results" style="display:none">
+
+    <!-- Transcription -->
+    <div class="card">
+      <h2>Whisper Transcription</h2>
+      <div class="transcript-box">
+        <div class="t-label">What Whisper heard</div>
+        <div class="t-text" id="transcript-text"></div>
+      </div>
+    </div>
+
+    <!-- Sentiment + Severity -->
+    <div class="card">
+      <h2>Module Outputs</h2>
+      <div class="section-title">Sentiment Detection</div>
+      <div class="grid-2">
+        <div class="metric" id="sentiment-card">
+          <div class="m-label">Emotion</div>
+          <div class="m-value" id="sentiment-val">—</div>
+          <div class="m-sub" id="sentiment-sub"></div>
+        </div>
+        <div class="metric" id="severity-card">
+          <div class="m-label">Severity</div>
+          <div class="m-value" id="severity-val">—</div>
+          <div class="m-sub" id="severity-sub"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATE -->
+    <div class="card">
+      <h2>Adaptive Task Engine Decision</h2>
+      <div class="ate-grid">
+        <div class="ate-item">
+          <div class="a-label">Next Difficulty</div>
+          <div class="a-value" id="ate-diff">—</div>
+        </div>
+        <div class="ate-item">
+          <div class="a-label">Cue Type</div>
+          <div class="a-value" id="ate-cue-type">—</div>
+        </div>
+        <div class="ate-item">
+          <div class="a-label">Cue Strength</div>
+          <div class="a-value" id="ate-cue-strength">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task + Cue -->
+    <div class="card">
+      <h2>Task & Cue Generator</h2>
+      <div class="task-box">
+        <div class="t-label">Generated Task</div>
+        <div class="t-prompt" id="task-text">—</div>
+        <div class="t-diff" id="task-diff"></div>
+      </div>
+      <div class="cue-box">
+        <div class="c-label">Supportive Cue</div>
+        <div class="c-text" id="cue-text">—</div>
+      </div>
+      <div class="streak-note" id="streak-note"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function onFileSelected(input) {
+    const area = document.getElementById('upload-area');
+    const label = document.getElementById('file-name');
+    if (input.files[0]) {
+      area.classList.add('has-file');
+      label.style.display = 'block';
+      label.textContent = '✓ ' + input.files[0].name;
+    }
+  }
+
+  function setStep(id, state) {
+    const el = document.getElementById(id);
+    el.className = 'step ' + state;
+  }
+
+  function showFlow() {
+    document.getElementById('pipeline-flow').style.display = 'flex';
+    ['step-upload','step-whisper','step-sentiment','step-severity','step-ate','step-task']
+      .forEach(s => setStep(s, ''));
+  }
+
+  function setLoading(loading, label) {
+    const btn = document.getElementById('run-btn');
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? `<span class="spinner"></span>${label}`
+      : '▶ Run Full Pipeline';
+  }
+
+  function colorClass(type, value) {
+    if (type === 'sentiment') return value === 'positive' ? 'positive' : 'frustrated';
+    return value; // mild / moderate / severe
+  }
+
+  function diffLabel(d) {
+    const map = {1:'Starter',2:'Mild',3:'Moderate',4:'Severe',5:'Severe'};
+    return `${map[d] || d} (${d}/5)`;
+  }
+
+  function renderResults(data) {
+    document.getElementById('error-box').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+
+    // Mark all steps done
+    ['step-upload','step-whisper','step-sentiment','step-severity','step-ate','step-task']
+      .forEach(s => setStep(s, 'done'));
+
+    // Transcript
+    document.getElementById('transcript-text').textContent = data.transcribed_text || '(no transcription)';
+
+    // Sentiment
+    const sc = document.getElementById('sentiment-card');
+    sc.className = 'metric ' + colorClass('sentiment', data.emotion_detected);
+    document.getElementById('sentiment-val').textContent = data.emotion_detected.toUpperCase();
+    document.getElementById('sentiment-sub').textContent =
+      data.emotion_detected === 'positive' ? 'Patient sounds engaged' : 'Patient sounds stressed';
+
+    // Severity
+    const sev = document.getElementById('severity-card');
+    sev.className = 'metric ' + data.severity_detected;
+    document.getElementById('severity-val').textContent = data.severity_detected.toUpperCase();
+    const sevDesc = {mild:'Small difficulty, mostly fluent', moderate:'Noticeable difficulty, needs support', severe:'Strong difficulty, needs protection'};
+    document.getElementById('severity-sub').textContent = sevDesc[data.severity_detected] || '';
+
+    // ATE
+    document.getElementById('ate-diff').textContent = diffLabel(data.adaptive_decision.difficulty);
+    document.getElementById('ate-cue-type').textContent = data.adaptive_decision.cue_type.replace('_', ' ').toUpperCase();
+    document.getElementById('ate-cue-strength').textContent = ['None','Light','Strong'][data.adaptive_decision.cue_strength] || data.adaptive_decision.cue_strength;
+
+    // Task
+    document.getElementById('task-text').textContent = data.task_generated.prompt;
+    document.getElementById('task-diff').textContent = 'Difficulty level: ' + data.task_generated.difficulty;
+
+    // Cue
+    document.getElementById('cue-text').textContent = data.cue;
+
+    // Streak
+    document.getElementById('streak-note').innerHTML =
+      `<strong>Frustration streak after this round:</strong> ${data.frustration_streak} &nbsp;|&nbsp; Use this value as "Frustration Streak" in the next round.`;
+  }
+
+  function showError(msg) {
+    document.getElementById('results').style.display = 'none';
+    ['step-upload','step-whisper','step-sentiment','step-severity','step-ate','step-task']
+      .forEach(s => setStep(s, ''));
+    const e = document.getElementById('error-box');
+    e.style.display = 'block';
+    e.textContent = 'Error: ' + msg;
+  }
+
+  let _timers = [];
+
+  async function runPipeline() {
+    const file = document.getElementById('audio-input').files[0];
+    if (!file) { alert('Please select a .wav file first.'); return; }
+
+    // Clear any previous timers
+    _timers.forEach(t => clearTimeout(t));
+    _timers = [];
+
+    // Reset UI
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('error-box').style.display = 'none';
+
+    showFlow();
+    setStep('step-upload', 'done');
+    setStep('step-whisper', 'active');
+    setLoading(true, 'Transcribing with Whisper...');
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('previous_difficulty', document.getElementById('prev-diff').value);
+      form.append('frustration_streak', document.getElementById('frust').value);
+
+      _timers.push(setTimeout(() => {
+        setStep('step-whisper', 'done');
+        setStep('step-sentiment', 'active');
+        setLoading(true, 'Running sentiment & severity...');
+      }, 3000));
+
+      _timers.push(setTimeout(() => {
+        setStep('step-sentiment', 'done');
+        setStep('step-severity', 'done');
+        setStep('step-ate', 'active');
+        setLoading(true, 'Running adaptive engine...');
+      }, 6000));
+
+      _timers.push(setTimeout(() => {
+        setStep('step-ate', 'done');
+        setStep('step-task', 'active');
+        setLoading(true, 'Generating task & cue...');
+      }, 9000));
+
+      const res = await fetch('/therapy_audio', { method: 'POST', body: form });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+      renderResults(await res.json());
+    } catch (e) {
+      showError(e.message);
+    }
+
+    _timers.forEach(t => clearTimeout(t));
+    _timers = [];
+    setLoading(false);
+  }
+</script>
+</body>
+</html>

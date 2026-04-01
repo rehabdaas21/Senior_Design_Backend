@@ -1,0 +1,17 @@
+# Model files
+backend/models/
+backend/distilbert_therapy_adapted/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Env
+.env
+.venv/
+venv/
+
+# OS
+desktop.ini
+.DS_Store
