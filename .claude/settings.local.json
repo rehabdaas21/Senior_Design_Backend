@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:/hair_venv/Scripts/python.exe\" -c \"import openai; print\\(openai.__version__\\)\")"
+    ]
+  }
+}

@@ -1,5 +1,9 @@
-# Model files
-backend/models/
+# Model files (keep folder structure, ignore actual model files)
+backend/models/**/*.pt
+backend/models/**/*.pkl
+backend/models/**/*.safetensors
+backend/models/**/*.bin
+backend/models/**/*.joblib
 backend/distilbert_therapy_adapted/
 
 # Python

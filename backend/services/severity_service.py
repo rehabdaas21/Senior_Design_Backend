@@ -4,19 +4,26 @@ import joblib
 import librosa
 from engine_inputs_outputs import SeverityLevel
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / "models" / "severity_models"
+MODELS_DIR = Path(__file__).resolve().parent.parent / "models" / "HAIRCSM_UPLOAD" / "models"
 
 SEV_MAP = {0: SeverityLevel.MILD, 1: SeverityLevel.MODERATE, 2: SeverityLevel.SEVERE}
 
 _clf = None
 _tfidf = None
+_models_attempted = False
 
 def _load_models():
-    global _clf, _tfidf
-    if _clf is None:
+    global _clf, _tfidf, _models_attempted
+    if _models_attempted:
+        return _clf, _tfidf
+
+    _models_attempted = True
+    try:
         _clf = joblib.load(MODELS_DIR / "fused_severity_model.pkl")
-    if _tfidf is None:
         _tfidf = joblib.load(MODELS_DIR / "tfidf_vectorizer.pkl")
+    except Exception:
+        _clf = None
+        _tfidf = None
     return _clf, _tfidf
 
 def _extract_audio_features(wav_path: str) -> np.ndarray:
@@ -30,15 +37,20 @@ def _extract_audio_features(wav_path: str) -> np.ndarray:
         mfcc = mfcc[:, :target_T]
     return mfcc.astype(np.float32).reshape(1, -1)
 
-def predict_severity(audio_file: str = None, text: str = None) -> SeverityLevel:
+def predict_severity(audio_file: str = None, text: str = None) -> SeverityLevel | None:
     """
     Predicts aphasia severity using fused audio (MFCC) + text (TF-IDF) features.
     Falls back to MODERATE if neither audio nor text is provided.
     """
     if audio_file is None and not text:
-        return SeverityLevel.MODERATE
+        return None
 
-    clf, tfidf = _load_models()
+    try:
+        clf, tfidf = _load_models()
+        if clf is None or tfidf is None:
+            return None
+    except Exception:
+        return None
 
     # Audio features (192000)
     if audio_file:
