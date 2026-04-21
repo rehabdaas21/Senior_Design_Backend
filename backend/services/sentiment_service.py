@@ -22,6 +22,16 @@ class AudioModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.wav2vec2 = Wav2Vec2Model.from_pretrained('facebook/wav2vec2-base')
+
+        for param in self.wav2vec2.feature_extractor.parameters():
+            param.requires_grad = False
+        for param in self.wav2vec2.feature_projection.parameters():
+            param.requires_grad = False
+        for i, layer in enumerate(self.wav2vec2.encoder.layers):
+            if i < len(self.wav2vec2.encoder.layers) - 4:
+                for param in layer.parameters():
+                    param.requires_grad = False
+
         self.compress = nn.Sequential(
             nn.Linear(768, 512), nn.LayerNorm(512), nn.GELU(), nn.Dropout(0.2),
             nn.Linear(512, 256), nn.LayerNorm(256),
@@ -73,9 +83,11 @@ def _load_models():
     try:
         processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base")
         distilbert = DistilBertForSequenceClassification.from_pretrained(
-            DISTILBERT_PATH
+            DISTILBERT_PATH, local_files_only=True
         )
-        tokenizer = DistilBertTokenizerFast.from_pretrained(DISTILBERT_PATH)
+        tokenizer = DistilBertTokenizerFast.from_pretrained(
+            DISTILBERT_PATH, local_files_only=True
+        )
         distilbert.eval().to(DEVICE)
         for param in distilbert.parameters():
             param.requires_grad = False
@@ -83,8 +95,8 @@ def _load_models():
         ckpt = torch.load(str(FUSION_CHECKPOINT), map_location=DEVICE)
         audio_model = AudioModel().to(DEVICE)
         fusion_model = FusionModel().to(DEVICE)
-        audio_model.load_state_dict(ckpt["audio_model"])
-        fusion_model.load_state_dict(ckpt["fusion_model"])
+        audio_model.load_state_dict(ckpt["audio_model_state_dict"])
+        fusion_model.load_state_dict(ckpt["fusion_model_state_dict"])
         audio_model.eval()
         fusion_model.eval()
 
@@ -117,7 +129,7 @@ def predict_emotion(text: str, audio_file: str = None) -> EmotionState | None:
 
             if audio_file is not None:
                 audio, _ = librosa.load(audio_file, sr=SAMPLE_RATE, mono=True)
-                audio = audio[: SAMPLE_RATE * 600]
+                audio = audio[: SAMPLE_RATE * 15]
                 audio_inputs = processor(
                     audio,
                     sampling_rate=SAMPLE_RATE,
